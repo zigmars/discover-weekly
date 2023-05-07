@@ -149,7 +149,7 @@ def main():
 		spotify = SpotifyAPI(args.token)
 	else:
 		spotify = SpotifyAPI.authorize(client_id='5c098bcc800e45d49e476265bc9b6934',
-		                               scope='playlist-read-private playlist-read-collaborative user-library-read')
+					scope='playlist-read-private playlist-read-collaborative user-library-read')
 	
 	# Get the ID of the logged in user.
 	logging.info('Loading user info...')
@@ -162,7 +162,7 @@ def main():
 	# List liked albums and songs
 	if 'liked' in args.dump:
 		logging.info('Loading liked albums and songs...')
-		liked_tracks = spotify.list(f'users/{user_id}/tracks'.format(user_id=me['id']), {'limit': 50})
+		liked_tracks = spotify.list('users/{user_id}/tracks'.format(user_id=me['id']), {'limit': 50})
 		liked_albums = spotify.list('me/albums', {'limit': 50})
 		playlists += [{'name': 'Liked Songs', 'tracks': liked_tracks}]
 
@@ -174,8 +174,10 @@ def main():
 
 		# List all tracks in each playlist
 		for playlist in playlist_data:
-			logging.info(f'Loading playlist: {name} ({tracks[total]} songs)'.format(**playlist))
+			if playlist['name'] != 'Discover Weekly': continue
+			logging.info('Loading playlist: {name} ({tracks[total]} songs)'.format(**playlist))
 			playlist['tracks'] = spotify.list(playlist['tracks']['href'], {'limit': 100})
+			break;
 		playlists += playlist_data
 	
 	# Write the file.
@@ -190,31 +192,19 @@ def main():
 		
 		# Tab-separated file.
 		else:
-			f.write('Playlists: \r\n\r\n')
 			for playlist in playlists:
-				f.write(playlist['name'] + '\r\n')
+				if playlist['name'] != 'Discover Weekly': continue
 				for track in playlist['tracks']:
 					if track['track'] is None:
 						continue
-					f.write(f'{name}\t|\t{artists}\t|\t{album}\t|\t{uri}\t|\t{release_date}\r\n'.format(
+					f.write('{name}\t|\t{artists}\t|\t{album}\t|\t{uri}\t|\t{release_date}\r\n'.format(
 						uri=track['track']['uri'],
 						name=track['track']['name'],
 						artists=', '.join([artist['name'] for artist in track['track']['artists']]),
 						album=track['track']['album']['name'],
 						release_date=track['track']['album']['release_date']
 					))
-				f.write('\r\n')
-			if len(liked_albums) > 0:
-				f.write('Liked Albums: \r\n\r\n')
-				for album in liked_albums:
-					uri = album['album']['uri']
-					name = album['album']['name']
-					artists = ', '.join([artist['name'] for artist in album['album']['artists']])
-					release_date = album['album']['release_date']
-					album = f'{artists} - {name}'
-
-					f.write(f'{name}\t{artists}\t-\t{uri}\t{release_date}\r\n')
-
+				break
 	logging.info('Wrote file: ' + args.file)
 
 if __name__ == '__main__':
